@@ -1,0 +1,13 @@
+Field,Type,Null,Key,Default,Extra
+date,date,YES,,NULL,
+gross_sales,double,NO,,0,
+total_discount_amount,double,NO,,0,
+total_sales,double,NO,,0,
+net_sales,double,NO,,0,
+total_orders,"decimal(42,0)",NO,,0,
+cod_orders,"decimal(42,0)",NO,,0,
+prepaid_orders,"decimal(42,0)",NO,,0,
+partially_paid_orders,int,YES,,0,
+total_sessions,int,NO,,0,
+total_atc_sessions,int,NO,,0,
+adjusted_total_sessions,bigint,YES,,NULL,

@@ -1,0 +1,66 @@
+{
+  "alert": {
+    "brand_id": 3,
+    "metric": "cvr",
+    "drop_pct": 12,
+    "timestamp": "2026-01-06T15:00:00Z",
+    "baseline_window": "avg_prev_3_days_same_hour"
+  },
+  "brand": {
+    "brand_id": 3,
+    "name": "Manual Test Brand"
+  },
+  "workflow": {
+    "id": "wf_manual_test_v1",
+    "version": "1.0",
+    "nodes": [
+      {
+        "id": "n_val",
+        "type": "validation",
+        "params": { "min_drop_pct": 5 },
+        "next": "n_metric"
+      },
+      {
+        "id": "n_metric",
+        "type": "metric_compare",
+        "params": { "metric": "cvr" },
+        "next": "n_branch"
+      },
+      {
+        "id": "n_branch",
+        "type": "branch",
+        "params": {
+          "rules": [
+            {
+              "if": "sessions_delta_pct > 5 AND orders_delta_pct < -10",
+              "next": "n_breakdown"
+            }
+          ],
+          "default_next": "n_suppress"
+        },
+        "next": "n_breakdown"
+      },
+      {
+        "id": "n_breakdown",
+        "type": "recursive_dimension_breakdown",
+        "params": { "dimensions": ["payment_failure_rate", "product"] },
+        "next": "n_conf"
+      },
+      {
+        "id": "n_conf",
+        "type": "confidence",
+        "next": "n_insight"
+      },
+      {
+        "id": "n_insight",
+        "type": "insight",
+        "params": {}
+      },
+      {
+        "id": "n_suppress",
+        "type": "suppression",
+        "params": { "reason": "no_match" }
+      }
+    ]
+  }
+}
