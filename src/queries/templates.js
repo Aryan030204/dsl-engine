@@ -26,22 +26,16 @@ const TEMPLATES = {
     WHERE date >= ? AND date < ?
   `,
 
-  OVERALL_SUMMARY_SAME_HOUR_AVG: `
-    SELECT
-      -- Calculate Sessions/Orders as Average per Day
-      -- DATEDIFF(param2, param1) gives N days.
-      -- We use shopify_orders because overall_summary is Daily.
-      -- Note: 'total_sessions' is not in shopify_orders, strictly speaking we only have Orders here.
-      -- We will approximate CVR using session count from overall_summary / 24? No, that's bad.
-      -- For now, let's just use Orders for the Average Baseline, and assume Sessions is roughly stable or use proxy.
-      
-      COUNT(*) / DATEDIFF(?, ?) AS orders,
-      0 AS sessions, -- Placeholder if we can't get hourly sessions
-      0 AS cvr
-      
-    FROM shopify_orders
-    WHERE created_at >= ? AND created_at < ?
-      AND created_hr = HOUR(?)  -- Match the hour of the Start Date
+  HOURLY_METRICS: `
+    SELECT 
+      SUM(number_of_sessions) AS sessions,
+      SUM(number_of_orders) AS orders,
+      SUM(total_sales) AS gmv,
+      (SUM(number_of_orders) / NULLIF(SUM(number_of_sessions), 0)) * 100 AS cvr
+    FROM hour_wise_sales
+    WHERE 
+        TIMESTAMP(date, MAKETIME(hour, 0, 0)) >= ? 
+        AND TIMESTAMP(date, MAKETIME(hour, 0, 0)) < ?
   `,
 
   /* =====================================================

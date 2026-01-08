@@ -27,9 +27,31 @@ async function execute(node, context) {
 
     console.log(`[MetricCompare] Full Funnel Analysis`);
 
-    // 2. Execute Queries (OVERALL_SUMMARY is sufficient for high level)
-    const currentData = await executor.executeTemplate(brand_id, 'OVERALL_SUMMARY', [currentStart, currentEnd]);
-    const baselineData = await executor.executeTemplate(brand_id, 'OVERALL_SUMMARY', [baselineStart, baselineEnd]);
+    // 2. Execute Queries
+    // Heuristic: If window is < 24 hours, use Hourly table.
+    // Else use Daily Overall Summary.
+    const durationMs = currentEnd - currentStart;
+    const isHourly = durationMs < (24 * 60 * 60 * 1000);
+    const templateName = isHourly ? 'HOURLY_METRICS' : 'OVERALL_SUMMARY';
+
+    console.log(`[MetricCompare] Analysis Mode: ${isHourly ? 'Hourly' : 'Daily'} (${templateName})`);
+
+    const currentData = await executor.executeTemplate(brand_id, templateName, [currentStart, currentEnd]);
+
+    // For baseline, we also check its duration or just apply the same logic?
+    // Usually baseline matches granularity. 
+    // If 'prev_day_same_hour' -> 1 hour -> Hourly.
+    // If 'avg_prev_3_days_same_hour' -> logic in utils returns full span? 
+    // Wait, utils.parseWindow returns full span [start, ref]. 
+    // If that span is multiple days, logic below treats it as Daily table?
+    // But we want Hourly for "Average of Hourly" if we had that logic.
+    // For now, let's stick to the heuristic. If baseline is "Same Hour Previous Day" (1h), it uses Hourly.
+
+    const baseDuration = baselineEnd - baselineStart;
+    const isBaseHourly = baseDuration < (24 * 60 * 60 * 1000);
+    const baseTemplate = isBaseHourly ? 'HOURLY_METRICS' : 'OVERALL_SUMMARY';
+
+    const baselineData = await executor.executeTemplate(brand_id, baseTemplate, [baselineStart, baselineEnd]);
 
     const cur = currentData[0] || {};
     const base = baselineData[0] || {};
