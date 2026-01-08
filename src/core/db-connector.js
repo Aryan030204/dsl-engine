@@ -23,6 +23,7 @@ async function getPool(brandId) {
         throw new Error(`Missing database credentials for brand ${brandId}`);
     }
 
+    // SAFE LOGGING: Do not log User or Password
     console.log(`[DB-Connector] Connecting to Brand ${brandId} -> DB: ${dbName} @ ${host}`);
 
     const pool = mysql.createPool({

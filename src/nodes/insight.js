@@ -69,6 +69,7 @@ async function execute(node, context) {
         root_causes: causes,
         insight: {
             summary,
+            conclusion: generateConclusion(causes, confidence, results.mixed_factors),
             details,
             limitations,
             confidence
@@ -76,6 +77,40 @@ async function execute(node, context) {
     };
 
     return { status: 'done' };
+}
+
+function generateConclusion(causes, confidence, mixed) {
+    if (!causes || causes.length === 0) {
+        return "The analysis did not identify a statistically significant primary cause for the observed drop. This suggests the issue may be systemic, or related to a dimension not covered in the current workflow (e.g. Traffic Source, Site Speed).";
+    }
+
+    const top = causes[0];
+    const dimLabel = utils.formatLabel(top.dimension);
+    let narrative = "";
+
+    // Primary Driver Narrative
+    if (top.dimension === 'payment_gateway') {
+        narrative = `The drop is primarily caused by a failure in the ${top.value} payment gateway.`;
+    } else if (top.dimension === 'discount_code') {
+        narrative = `The drop is heavily influenced by a collapse in the usage of the '${top.value}' discount code.`;
+    } else if (top.dimension === 'product_id' || top.dimension === 'product') {
+        narrative = `A distinct decline in sales for specific products (notably ${top.value}) is the main driver.`;
+    } else {
+        narrative = `The analysis identified ${dimLabel} ('${top.value}') as the primary contributing factor.`;
+    }
+
+    // Impact Context
+    narrative += ` This factor experienced a massive ${top.change.split('(')[0].trim().replace('Volume', 'volume')} impact which correlates strongly with the overall metric drop.`;
+
+    // Secondary Factors
+    if (causes.length > 1) {
+        const second = causes[1];
+        if (second.impact_score > 50) {
+            narrative += ` Additionally, significant declines were observed in ${utils.formatLabel(second.dimension)} (${second.value}), suggesting a potential compounding issue.`;
+        }
+    }
+
+    return narrative;
 }
 
 const utils = {

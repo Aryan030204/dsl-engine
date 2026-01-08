@@ -9,6 +9,7 @@ const TEMPLATE_MAP = {
     'discount_usage': 'DISCOUNT_USAGE_DISTRIBUTION',
     'discount_code': 'DISCOUNT_CODE_BREAKDOWN',
     'product': 'PRODUCT_CONVERSION_CONTRIBUTION',
+    'product_id': 'PRODUCT_CONVERSION_CONTRIBUTION', // Added mapping
     'price_bucket': 'PRODUCT_PRICE_BUCKET_DISTRIBUTION',
     'aov_bucket': 'AOV_DISTRIBUTION',
     'customer_type': 'NEW_VS_RETURNING_CUSTOMERS',

@@ -31,6 +31,7 @@ async function execute(node, context) {
         }
 
         if (matched) {
+            logger.info(`Rule Matched`, { expression: typeof rule.if === 'string' ? rule.if : 'object_condition', next: rule.next });
             return {
                 status: 'success',
                 next: rule.next
@@ -42,6 +43,7 @@ async function execute(node, context) {
     if (default_next) {
         // If default is an object with action: terminate
         if (typeof default_next === 'object' && default_next.action === 'terminate') {
+            logger.info(`Default Path -> Terminate`, { reason: default_next.reason });
             return {
                 status: 'terminate',
                 reason: default_next.reason
@@ -54,6 +56,7 @@ async function execute(node, context) {
         };
     }
 
+    logger.info(`No rules matched. No valid default path. Terminating.`);
     return {
         status: 'terminate',
         reason: 'No matching rule and no default path'

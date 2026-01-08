@@ -1,6 +1,17 @@
 const Context = require('./context');
 const Validator = require('./validator');
 const NodeRegistry = require('../nodes/index');
+const Logger = require('./logger');
+const logger = Logger.create('Core:Engine');
+
+/**
+ * Main Engine Entry Point.
+ * Executes a DSL workflow for a given alert.
+ * 
+ * @param {Object} input - { alert, brand, workflow }
+ * @returns {Promise<Object>} Final structured output
+ */
+
 
 /**
  * Main Engine Entry Point.
@@ -10,6 +21,12 @@ const NodeRegistry = require('../nodes/index');
  * @returns {Promise<Object>} Final structured output
  */
 async function executeWorkflow({ alert, brand, workflow }) {
+    logger.info(`Starting Workflow Execution: ${workflow.id} (v${workflow.version})`, {
+        brand_id: brand.brand_id,
+        trigger: alert.metric,
+        window: alert.current_window
+    });
+
     // 1. Validate Workflow
     const validationErrors = Validator.validateWorkflow(workflow);
     if (validationErrors.length > 0) {

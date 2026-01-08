@@ -145,6 +145,7 @@ async function executeTemplate(brandId, templateName, params, filters = []) {
         ]);
 
         const [rows] = result;
+        console.log(`[QueryExecutor] Template "${templateName}" returned ${rows.length} rows.`);
         return rows;
     } catch (error) {
         console.error(`Error executing template "${templateName}" for brand ${brandId}:`, error);
