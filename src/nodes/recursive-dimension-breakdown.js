@@ -5,7 +5,8 @@ const Logger = require('../core/logger');
 const logger = Logger.create('Node:Breakdown');
 
 async function execute(node, context) {
-    const { dimensions } = node.params;
+    const params = node.params || {};
+    const dimensions = node.dimensions || params.dimensions;
     const { brand_id } = context.brand;
 
     // --- Phase 1: Context Setup ---

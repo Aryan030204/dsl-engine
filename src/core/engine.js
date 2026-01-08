@@ -25,9 +25,13 @@ async function executeWorkflow({ alert, brand, workflow }) {
 
     // 3. Execution Loop
     // Find initial node (convention: type 'validation' or explicit 'start' flag, here assuming first 'validation' node)
+    // Updated logic: Check for 'start_node' in definition, fallback to first 'validation' node
     let currentNodeId = workflow.nodes.find(n => n.type === 'validation').id;
+    // TODO: Ideally use workflow.start_node if my validator logic set it, but here we scan.
+
     let steps = 0;
     const MAX_STEPS = 50; // Safety brake
+    const trace = []; // Trace execution path
 
     try {
         while (currentNodeId && steps < MAX_STEPS) {
@@ -42,9 +46,22 @@ async function executeWorkflow({ alert, brand, workflow }) {
             }
 
             console.log(`[Engine] Executing node ${node.id} (${node.type})`);
+
+            // Execute Node
             const result = await executor.execute(node, context);
 
+            // Record Trace
+            trace.push({
+                step: steps + 1,
+                id: node.id,
+                type: node.type,
+                status: result.status,
+                next: result.next,
+                reason: result.reason // capture failure reasons
+            });
+
             if (result.status === 'done') {
+                currentNodeId = null; // Clean exit
                 break;
             } else if (result.status === 'success') {
                 currentNodeId = result.next;
@@ -52,8 +69,12 @@ async function executeWorkflow({ alert, brand, workflow }) {
                 // Nodes like validation might return early status
                 return {
                     status: result.status,
-                    reason: result.reason
+                    reason: result.reason,
+                    trace: trace // Return trace even on suppress
                 };
+            } else if (result.status === 'terminate') {
+                // Explicit termination from branch/validation logic
+                currentNodeId = null;
             } else {
                 // Unknown status
                 throw new Error(`Unknown result status from node ${node.id}: ${result.status}`);
@@ -72,7 +93,8 @@ async function executeWorkflow({ alert, brand, workflow }) {
                 ...context.final_insight,
                 brand_id: context.brand.brand_id,
                 metric: context.alert.metric,
-                metadata: context.metadata
+                metadata: context.metadata,
+                trace: trace // Include trace
             };
             return output;
         } else {
@@ -80,7 +102,8 @@ async function executeWorkflow({ alert, brand, workflow }) {
             return {
                 status: 'error',
                 type: 'execution_error',
-                message: 'Workflow finished without generating insight'
+                message: 'Workflow finished without generating insight',
+                trace: trace
             };
         }
 
@@ -89,7 +112,8 @@ async function executeWorkflow({ alert, brand, workflow }) {
         return {
             status: 'error',
             type: 'execution_exception',
-            message: error.message
+            message: error.message,
+            trace: trace
         };
     }
 }

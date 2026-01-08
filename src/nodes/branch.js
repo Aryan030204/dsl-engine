@@ -8,19 +8,15 @@ const logger = Logger.create('Node:Branch');
  * @param {Object} context 
  */
 async function execute(node, context) {
-    const { rules, default_next } = node.params;
+    const params = node.params || {};
+    const rules = node.rules || params.rules;
+    const default_next = node.default_next || params.default_next;
+
     // rules structure: [ { if: "condition_string", next: "node_id" }, ... ]
-    // or legacy: { conditions: [...] }
 
-    // Support legacy structure for backward compat if needed, but per prompt we harden it.
-    // Let's support a robust "rules" array where "if" is a string expression or object.
-
-    // Simplification: We will parse a string like "sessions_delta_pct > 15 AND orders_delta_pct >= -5"
-    // For safety and determinism (no eval), we implement a simple parser for this specific grammar.
-
-    // If params.conditions exists (legacy), use that. Else use params.rules.
-    const ruleList = node.params.rules || (node.params.conditions ? node.params.conditions.map(c => ({
-        if: c, // passing raw condition object to evaluator if it handles it
+    // Compatibility with legacy "conditions"
+    const ruleList = rules || (params.conditions ? params.conditions.map(c => ({
+        if: c,
         next: c.next
     })) : []);
 
@@ -42,9 +38,25 @@ async function execute(node, context) {
         }
     }
 
+    // Default Path
+    if (default_next) {
+        // If default is an object with action: terminate
+        if (typeof default_next === 'object' && default_next.action === 'terminate') {
+            return {
+                status: 'terminate',
+                reason: default_next.reason
+            };
+        }
+
+        return {
+            status: 'success',
+            next: default_next
+        };
+    }
+
     return {
-        status: 'success',
-        next: default_next
+        status: 'terminate',
+        reason: 'No matching rule and no default path'
     };
 }
 
@@ -83,17 +95,9 @@ function evaluateExpression(expr, context) {
 }
 
 function resolveAlias(field) {
-    // Shortcuts for common context paths
-    if (field === 'sessions_delta_pct') return 'derived.sessions.pct_change'; // Alias mapping if needed
-    // Or assume defined in 'derived' if not fully qualified
-    if (!field.includes('.')) {
-        // Try looking in derived first
-        return `derived.${field}`; // or `derived.${field}.pct_change`?
-        // Let's stick to full paths or mapped derived values.
-        // The prompt example used "sessions_delta_pct". 
-        // We will enable metric_compare to put these flat in derived or we flatten them here.
-        // For now, let's assume getByPath handles standard context paths: "derived.metrics.sessions.pct_change"
-    }
+    // Shortcuts for common context paths can go here
+    // But since metric_compare produces flat keys, we can just return the field.
+    // If we wanted to map "cvr" to "alert.metric", we could do it here.
     return field;
 }
 

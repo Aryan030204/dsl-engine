@@ -12,7 +12,11 @@ const TEMPLATE_MAP = {
     'price_bucket': 'PRODUCT_PRICE_BUCKET_DISTRIBUTION',
     'aov_bucket': 'AOV_DISTRIBUTION',
     'customer_type': 'NEW_VS_RETURNING_CUSTOMERS',
-    'time_clustering': 'ORDER_FAILURE_TIME_CLUSTER'
+    'time_clustering': 'ORDER_FAILURE_TIME_CLUSTER',
+    // New Dimensions
+    'city': 'GEO_DISTRIBUTION',
+    'utm_source': 'UTM_SOURCE_DISTRIBUTION',
+    'utm_campaign': 'UTM_CAMPAIGN_DISTRIBUTION'
 };
 
 /**

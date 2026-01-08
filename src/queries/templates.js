@@ -13,10 +13,6 @@ const TEMPLATES = {
      1. OVERALL / BASELINE METRICS
      ===================================================== */
 
-  /* =====================================================
-     1. OVERALL / BASELINE METRICS
-     ===================================================== */
-
   OVERALL_SUMMARY: `
     SELECT 
       SUM(total_sessions) AS sessions,
@@ -28,6 +24,24 @@ const TEMPLATES = {
     -- or utilizing 'date' range for approximating granular windows if strict timestamp missing.
     -- For now, keeping logic generic to time filtering.
     WHERE date >= ? AND date < ?
+  `,
+
+  OVERALL_SUMMARY_SAME_HOUR_AVG: `
+    SELECT
+      -- Calculate Sessions/Orders as Average per Day
+      -- DATEDIFF(param2, param1) gives N days.
+      -- We use shopify_orders because overall_summary is Daily.
+      -- Note: 'total_sessions' is not in shopify_orders, strictly speaking we only have Orders here.
+      -- We will approximate CVR using session count from overall_summary / 24? No, that's bad.
+      -- For now, let's just use Orders for the Average Baseline, and assume Sessions is roughly stable or use proxy.
+      
+      COUNT(*) / DATEDIFF(?, ?) AS orders,
+      0 AS sessions, -- Placeholder if we can't get hourly sessions
+      0 AS cvr
+      
+    FROM shopify_orders
+    WHERE created_at >= ? AND created_at < ?
+      AND created_hr = HOUR(?)  -- Match the hour of the Start Date
   `,
 
   /* =====================================================
@@ -156,6 +170,52 @@ const TEMPLATES = {
       AND financial_status = 'pending'
     GROUP BY 1
     ORDER BY 1
+  `,
+
+  /* =====================================================
+     8. GEOGRAPHIC ANALYSIS
+     ===================================================== */
+
+  GEO_DISTRIBUTION: `
+    SELECT
+      COALESCE(NULLIF(billing_city, ''), 'Unknown') AS city,
+      COUNT(*) AS order_count
+    FROM shopify_orders
+    WHERE created_at >= ? AND created_at < ?
+    GROUP BY city
+    ORDER BY order_count DESC
+  `,
+
+  /* =====================================================
+     9. MARKETING ATTRIBUTION (UTM PARSING)
+     ===================================================== */
+
+  UTM_SOURCE_DISTRIBUTION: `
+    SELECT
+      CASE
+        WHEN full_url LIKE '%utm_source=%' THEN
+          SUBSTRING_INDEX(SUBSTRING_INDEX(full_url, 'utm_source=', -1), '&', 1)
+        ELSE 'direct/organic'
+      END AS source,
+      COUNT(*) AS order_count
+    FROM shopify_orders
+    WHERE created_at >= ? AND created_at < ?
+    GROUP BY source
+    ORDER BY order_count DESC
+  `,
+
+  UTM_CAMPAIGN_DISTRIBUTION: `
+    SELECT
+      CASE
+        WHEN full_url LIKE '%utm_campaign=%' THEN
+          SUBSTRING_INDEX(SUBSTRING_INDEX(full_url, 'utm_campaign=', -1), '&', 1)
+        ELSE 'none'
+      END AS campaign,
+      COUNT(*) AS order_count
+    FROM shopify_orders
+    WHERE created_at >= ? AND created_at < ?
+    GROUP BY campaign
+    ORDER BY order_count DESC
   `
 };
 

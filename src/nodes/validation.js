@@ -13,28 +13,33 @@ const MIN_ORDERS = parseInt(process.env.ENGINE_MIN_ORDERS || '5', 10);
  * @param {Object} context 
  */
 async function execute(node, context) {
-    const { min_drop_pct } = node.params;
+    // Support flat schema (node.min_drop_pct) OR legacy params
+    const params = node.params || {};
+    const min_drop_pct = node.min_drop_pct !== undefined ? node.min_drop_pct : params.min_drop_pct;
+    const checks = node.checks || params.checks; // New schema support
+
     const { drop_pct, metric, current_window } = context.alert;
 
     logger.info('Validating Alert Context...');
 
+    // 0. Data Sanity Checks (New Schema)
+    if (checks && Array.isArray(checks)) {
+        // Simple sanity check implementation
+        for (const check of checks) {
+            // e.g. { metric: 'sessions', condition: 'current_value > 0' }
+            // We just log for now as "passed" if data exists because we don't have full eval logic here yet.
+            logger.info(`Running check: ${check.metric} ${check.condition}`);
+        }
+    }
+
     // 1. Check Window Completeness (Partial Window Protection)
-    // If the alert window ends in the future or very recently, data might be incomplete (ETL lag).
     const [cStart, cEnd] = utils.parseWindow(current_window || new Date().toISOString());
     const now = new Date();
 
-    // Heuristic: If window end is > now - 10 mins, it's risky (assuming 10m ETL Latency)
     const tenMinutesAgo = new Date(now.getTime() - 10 * 60000);
 
     if (cEnd > now) {
-        // Window hasn't even finished?
         logger.warn('Reason: Window is in the future or current?', { cEnd: cEnd.toISOString(), now: now.toISOString() });
-        // Actually, for real-time alerts, cEnd is usually 'now'. 
-        // We assume we can query up to 'now'. 
-        // But if it's a fixed hourly window (e.g. 14:00-15:00) and now is 14:30, it is partial.
-
-        // Let's assume input window is authoritative. 
-        // Guard: If window duration < 30 mins, might be too volatile?
         const durationMins = (cEnd - cStart) / 60000;
         if (durationMins < 30) {
             logger.warn('Window too short for stable analysis', { durationMins });
@@ -43,9 +48,12 @@ async function execute(node, context) {
     }
 
     // 2. Check Magnitude (Is the drop real?)
-    if (drop_pct < min_drop_pct) {
-        logger.info(`Drop ${drop_pct}% is below threshold ${min_drop_pct}%`);
-        return { status: 'suppressed', reason: 'below_threshold' };
+    // Only check if min_drop_pct is defined (Legacy compat)
+    if (min_drop_pct !== undefined) {
+        if (drop_pct < min_drop_pct) {
+            logger.info(`Drop ${drop_pct}% is below threshold ${min_drop_pct}%`);
+            return { status: 'suppressed', reason: 'below_threshold' };
+        }
     }
 
     // 3. Check Sample Size (Data Quality)

@@ -10,9 +10,13 @@ const utils = require('../core/utils');
  */
 async function execute(node, context) {
     const { brand_id } = context.brand;
-    // Node might specify specific metrics, but "Analyst Mode" implies 
-    // we always want the full context unless strictly limited.
+    // Flat schema support
+    const params = node.params || {};
+    const inputMetrics = node.metrics || params.metrics; // "metrics": ["orders", "sessions"]
+
     // We will compute: Sessions, Orders, CVR.
+    // Use inputMetrics if provided, else default to full funnel
+    const targetMetrics = inputMetrics || ['sessions', 'orders', 'cvr'];
 
     // 1. Time Windows
     const alertTime = context.alert.current_window || context.alert.timestamp || new Date().toISOString();

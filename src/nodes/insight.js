@@ -5,7 +5,8 @@
  * @param {Object} context 
  */
 async function execute(node, context) {
-    const { template } = node.params;
+    const params = node.params || {};
+    const template = node.template || params.template;
     const results = context.analysis_results || {};
     const causes = results.root_causes || [];
     const confidence = results.confidence || 0.5;

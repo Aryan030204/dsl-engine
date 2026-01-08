@@ -5,14 +5,24 @@
  * @param {Object} context 
  */
 async function execute(node, context) {
-    // In full implementation, this might spawn a mini-engine loop
-    // For now, we assume it's a structural grouper that just points to 'start' of sub-flow
-    // But since our engine loop uses 'next', a composite node in this flat structure
-    // might just be a no-op that points to the first child.
+    const params = node.params || {};
+    // User schema uses "steps": ["node_1", "node_2"]
+    const steps = node.steps || params.steps;
+
+    let nextNode = node.next; // Default fallthrough
+
+    if (steps && Array.isArray(steps) && steps.length > 0) {
+        // In a flat graph, "executing steps" usually means jumping to the first one.
+        // The last one in the chain should point back to 'next', but that's hard to enforce dynamically without graph rewriting.
+        // For now, let's assume the user wired the 'next' of the steps correctly or we just jump to start.
+        nextNode = steps[0];
+    } else if (params.start_node_id) {
+        nextNode = params.start_node_id;
+    }
 
     return {
         status: 'success',
-        next: node.params.start_node_id
+        next: nextNode
     };
 }
 
